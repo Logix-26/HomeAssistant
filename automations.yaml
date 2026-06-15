@@ -1126,30 +1126,74 @@
         - action: CLOSE_GARAGE_NOW
           title: Close Garage
           icon: mdi:garage-lock
+        - action: CLOSE_GARAGE_ON_LEAVE
+          title: Close on Leave
+          icon: mdi:exit-run
   - wait_for_trigger:
     - event_type: mobile_app_notification_action
       event_data:
         action: CLOSE_GARAGE_NOW
       trigger: event
+    - event_type: mobile_app_notification_action
+      event_data:
+        action: CLOSE_GARAGE_ON_LEAVE
+      trigger: event
     timeout: 00:30:00
     continue_on_timeout: false
-  - if:
-    - condition: template
-      value_template: '{{ wait.trigger is not none }}'
-    then:
-    - device_id: 6737c7de72a532fd44e29f33cdf93028
-      domain: cover
-      entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
-      type: close
-    - action: notify.notify_joel
-      data:
-        title: Closing Garage 🔐
-        message: Got it, closing the garage door.
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == ''CLOSE_GARAGE_NOW''
+          }}'
+      sequence:
+      - device_id: 6737c7de72a532fd44e29f33cdf93028
+        domain: cover
+        entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+        type: close
+      - action: notify.notify_joel
         data:
-          notification_icon: mdi:garage-variant-lock
-          tag: garage-open-alert
-          color: '#00FF00'
-          timeout: 60
+          title: Closing Garage 🔐
+          message: Got it, closing the garage door.
+          data:
+            notification_icon: mdi:garage-variant-lock
+            tag: garage-open-alert
+            color: '#00FF00'
+            timeout: 60
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == ''CLOSE_GARAGE_ON_LEAVE''
+          }}'
+      sequence:
+      - action: notify.notify_joel
+        data:
+          title: Got it 👍
+          message: Garage will close automatically when you leave home.
+          data:
+            notification_icon: mdi:garage-open-variant
+            tag: garage-open-alert
+            color: '#0088FF'
+            timeout: 30
+      - wait_for_trigger:
+        - trigger: state
+          entity_id: zone.home
+          to: '0'
+        timeout: 04:00:00
+        continue_on_timeout: true
+      - condition: template
+        value_template: '{{ wait.trigger is not none }}'
+      - device_id: 6737c7de72a532fd44e29f33cdf93028
+        domain: cover
+        entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+        type: close
+      - action: notify.notify_joel
+        data:
+          title: Garage Closed 🔐
+          message: Garage door closed as you left home.
+          data:
+            notification_icon: mdi:garage-variant-lock
+            tag: garage-left-open
+            color: '#00FF00'
+            timeout: 60
   mode: single
 - id: '1731169214938'
   alias: WLED Timer
@@ -1216,4 +1260,62 @@
     device_id: b257e6935bc60f8207ddbc88e79c6ce0
     entity_id: 409aeea308de673617824e0498812b8c
     domain: switch
+  mode: single
+- id: 297ede3b-2181-4593-b59c-8e0bbb8626c8
+  alias: Garage Door - Left Home Open
+  description: Notifies if garage is still open when everyone leaves, with a remote
+    close button.
+  triggers:
+  - trigger: state
+    entity_id:
+    - zone.home
+    to: '0'
+  conditions:
+  - condition: device
+    device_id: 6737c7de72a532fd44e29f33cdf93028
+    domain: cover
+    entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+    type: is_open
+  actions:
+  - delay:
+      seconds: 20
+  - condition: device
+    device_id: 6737c7de72a532fd44e29f33cdf93028
+    domain: cover
+    entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+    type: is_open
+  - action: notify.notify_joel
+    data:
+      title: You've Left Home - Garage is Open!
+      message: The garage door is still open. Close it remotely?
+      data:
+        notification_icon: mdi:garage-alert-variant
+        tag: garage-left-open
+        color: '#FF0000'
+        car_ui: true
+        sticky: true
+        actions:
+        - action: CLOSE_GARAGE_LEFT_HOME
+          title: Close Garage
+          icon: mdi:garage-lock
+  - wait_for_trigger:
+    - event_type: mobile_app_notification_action
+      event_data:
+        action: CLOSE_GARAGE_LEFT_HOME
+      trigger: event
+    timeout: 01:00:00
+    continue_on_timeout: false
+  - device_id: 6737c7de72a532fd44e29f33cdf93028
+    domain: cover
+    entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+    type: close
+  - action: notify.notify_joel
+    data:
+      title: Garage Closed 🔐
+      message: Closing the garage door remotely.
+      data:
+        notification_icon: mdi:garage-variant-lock
+        tag: garage-left-open
+        color: '#00FF00'
+        timeout: 60
   mode: single
