@@ -1098,8 +1098,7 @@
         entity_id: e2d67472834a7398932d7241f13e02a9
         domain: switch
   mode: single
-- id: '1727867809486'
-  alias: Garage Door
+- alias: Garage Door
   description: ''
   triggers:
   - device_id: 6737c7de72a532fd44e29f33cdf93028
@@ -1195,6 +1194,7 @@
             color: '#00FF00'
             timeout: 60
   mode: single
+  id: '1727867809486'
 - id: '1731169214938'
   alias: WLED Timer
   description: ''
@@ -1261,8 +1261,7 @@
     entity_id: 409aeea308de673617824e0498812b8c
     domain: switch
   mode: single
-- id: 297ede3b-2181-4593-b59c-8e0bbb8626c8
-  alias: Garage Door - Left Home Open
+- alias: Garage Door - Left Home Open
   description: Notifies if garage is still open when everyone leaves, with a remote
     close button.
   triggers:
@@ -1319,3 +1318,51 @@
         color: '#00FF00'
         timeout: 60
   mode: single
+  id: 297ede3b-2181-4593-b59c-8e0bbb8626c8
+- alias: 'Tesla: Open Garage on Unlock'
+  description: When the Model Y is unlocked while Joel is home, offer to open the
+    garage door
+  triggers:
+  - trigger: state
+    entity_id: lock.garage_joel_s_car_lock
+    to: unlocked
+  conditions:
+  - condition: state
+    entity_id: person.joel
+    state: home
+  actions:
+  - action: notify.notify_joel
+    data:
+      title: Car Unlocked 🚗
+      message: Joel's Model Y is unlocked — open the garage?
+      data:
+        notification_icon: mdi:car-key
+        tag: tesla-unlock-garage
+        color: '#E31937'
+        car_ui: true
+        sticky: true
+        actions:
+        - action: OPEN_GARAGE_TESLA
+          title: Open Garage
+          icon: mdi:garage-open
+  - wait_for_trigger:
+    - trigger: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: OPEN_GARAGE_TESLA
+    timeout: 00:05:00
+    continue_on_timeout: false
+  - condition: template
+    value_template: '{{ wait.trigger is not none }}'
+  - action: cover.open_cover
+    target:
+      entity_id: cover.smart_garage_door_opener_door
+  - action: notify.notify_joel
+    data:
+      title: Garage Opening 🔓
+      message: Opening the garage door.
+      data:
+        tag: tesla-unlock-garage
+        notification_icon: mdi:garage-open-variant
+  mode: single
+  id: ecfec394-9b69-4e38-b058-343f61c58732
