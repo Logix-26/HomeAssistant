@@ -1129,17 +1129,31 @@
           title: Close on Leave
           icon: mdi:exit-run
   - wait_for_trigger:
-    - event_type: mobile_app_notification_action
+    - trigger: event
+      event_type: mobile_app_notification_action
       event_data:
         action: CLOSE_GARAGE_NOW
-      trigger: event
-    - event_type: mobile_app_notification_action
+    - trigger: event
+      event_type: mobile_app_notification_action
       event_data:
         action: CLOSE_GARAGE_ON_LEAVE
-      trigger: event
+    - trigger: state
+      entity_id: cover.smart_garage_door_opener_door
+      to: closed
     timeout: 00:30:00
     continue_on_timeout: false
+  - condition: template
+    value_template: '{{ wait.trigger is not none }}'
   - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.platform == ''state'' }}'
+      sequence:
+      - action: notify.notify_joel
+        data:
+          message: clear_notification
+          data:
+            tag: garage-open-alert
     - conditions:
       - condition: template
         value_template: '{{ wait.trigger.event.data.action == ''CLOSE_GARAGE_NOW''
@@ -1190,7 +1204,7 @@
           message: Garage door closed as you left home.
           data:
             notification_icon: mdi:garage-variant-lock
-            tag: garage-left-open
+            tag: garage-open-alert
             color: '#00FF00'
             timeout: 60
   mode: single
