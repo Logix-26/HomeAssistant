@@ -1,0 +1,1186 @@
+- id: '1706880188055'
+  alias: Vacuum - Empty House
+  description: ''
+  triggers:
+  - alias: When no one is home for 2 minutes
+    entity_id:
+    - zone.home
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 0
+    to: '0'
+    trigger: state
+  conditions:
+  - condition: not
+    conditions:
+    - condition: time
+      weekday:
+      - sat
+      after: 00:00:00
+      before: '12:00:00'
+  actions:
+  - parallel:
+    - alias: Start Vacuum After Delay
+      sequence:
+      - delay:
+          hours: 0
+          minutes: 2
+          seconds: 5
+          milliseconds: 0
+      - alias: Start Vacuum
+        if:
+        - condition: state
+          entity_id: zone.home
+          state: '0'
+          for:
+            hours: 0
+            minutes: 2
+            seconds: 0
+          enabled: true
+        - alias: Test if Vacuum is not already going
+          condition: not
+          conditions:
+          - condition: device
+            device_id: 256c14799ff75c5937b5c678bc54f2ab
+            domain: vacuum
+            entity_id: 9f7f21b10f4047b96aa1715b20777fde
+            type: is_cleaning
+        - condition: state
+          entity_id: timer.vacuum_start_cooldown
+          state: idle
+        then:
+        - metadata: {}
+          data: {}
+          target:
+            entity_id: timer.vacuum_start_cooldown
+          action: timer.start
+        - data:
+            title: Preparing Vacuum
+            message: "{% set duration = state_attr('timer.vacuum_start_cooldown','duration').split(':')\
+              \ %} {% set hours = duration[0] | int %} {% set minutes = duration[1]\
+              \ | int %} {% set seconds = duration[2] | int %} {% set parts = [] %}\
+              \ {% if hours > 0 %}\n  {% set parts = parts + [hours|string + \"h\"\
+              ] %}\n{% endif %} {% if minutes > 0 or (hours > 0 and seconds > 0) %}\n\
+              \  {% set parts = parts + [minutes|string + \"m\"] %}\n{% endif %} {%\
+              \ if seconds > 0 %}\n  {% set parts = parts + [seconds|string + \"s\"\
+              ] %}\n{% endif %} No one is home, vacuum will start after {{ parts|join('\
+              \ ') }} unless stopped."
+            data:
+              notification_icon: mdi:robot-vacuum
+              timeout: "{{ \n  (state_attr('timer.vacuum_start_cooldown','finishes_at')\
+                \ | as_timestamp | int)\n  - 2 -\n  now() | as_timestamp | int\n}}"
+              tag: vacuum-startup
+              color: '#0000FF'
+              group: test-notifications
+              chronometer: true
+              when: '{{ state_attr(''timer.vacuum_start_cooldown'',''finishes_at'')
+                | as_timestamp | int }}'
+              car_ui: true
+              actions:
+              - action: CANCEL_VACUUM
+                title: Cancel Timer
+                icon: mdi:stop
+              - action: START_VACUUM
+                title: Just Send It!
+                icon: mdi:play
+          action: notify.notify_all_people
+        - alias: Listen for notification actions
+          timeout: '{{ state_attr(''timer.vacuum_start_cooldown'',''remaining'') }}'
+          wait_for_trigger:
+          - event_type: mobile_app_notification_action
+            event_data:
+              action: START_VACUUM
+            trigger: event
+          - event_type: mobile_app_notification_action
+            event_data:
+              action: CANCEL_VACUUM
+            trigger: event
+        - alias: Perform the action
+          choose:
+          - alias: START_VACUUM
+            conditions:
+            - condition: template
+              value_template: '{{ wait.trigger.event.data.action == ''START_VACUUM''
+                }}'
+            sequence:
+            - data:
+                title: Starting Vacuum 🧹
+                message: Alright, fine! Someone is impatient, so the vacuum is off...
+                  🤨
+                data:
+                  notification_icon: mdi:robot-vacuum
+                  tag: vacuum-startup
+                  color: '#00FF00'
+                  group: test-notifications
+                  chronometer: true
+                  when: '{{ now() | as_timestamp | int }}'
+              action: notify.notify_all_people
+            - metadata: {}
+              data: {}
+              target:
+                entity_id: timer.vacuum_start_cooldown
+              action: timer.cancel
+            - metadata: {}
+              data: {}
+              target:
+                device_id: 256c14799ff75c5937b5c678bc54f2ab
+              action: vacuum.start
+          - alias: CANCEL_VACUUM
+            conditions:
+            - condition: template
+              value_template: '{{ wait.trigger.event.data.action == ''CANCEL_VACUUM''
+                }}'
+            sequence:
+            - data:
+                title: Cancelled Vacuum 😞
+                message: Okay then, dirty house it is! Sorry for suggesting it. 🤮
+                data:
+                  notification_icon: mdi:robot-vacuum
+                  timeout: 60
+                  tag: vacuum-startup
+                  color: '#FF0000'
+                  group: test-notifications
+              action: notify.notify_all_people
+            - metadata: {}
+              data: {}
+              target:
+                entity_id: timer.vacuum_start_cooldown
+              action: timer.cancel
+      enabled: true
+    - alias: Close Garage After No Delay
+      sequence:
+      - alias: Close Garage Door
+        if:
+        - condition: state
+          entity_id: zone.home
+          state: '0'
+          for:
+            hours: 0
+            minutes: 0
+            seconds: 0
+          enabled: true
+        - condition: device
+          device_id: 6737c7de72a532fd44e29f33cdf93028
+          domain: cover
+          entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+          type: is_open
+        - condition: state
+          state: idle
+          entity_id: timer.garage_auto_close_cooldown
+        then:
+        - metadata: {}
+          data: {}
+          target:
+            entity_id:
+            - timer.garage_auto_close_cooldown
+          action: timer.start
+        - data:
+            title: Garage Auto Close
+            message: "{% set duration = state_attr('timer.garage_auto_close_cooldown','duration').split(':')\
+              \ %} {% set hours = duration[0] | int %} {% set minutes = duration[1]\
+              \ | int %} {% set seconds = duration[2] | int %} {% set parts = [] %}\
+              \ {% if hours > 0 %}\n  {% set parts = parts + [hours|string + \"h\"\
+              ] %}\n{% endif %} {% if minutes > 0 or (hours > 0 and seconds > 0) %}\n\
+              \  {% set parts = parts + [minutes|string + \"m\"] %}\n{% endif %} {%\
+              \ if seconds > 0 %}\n  {% set parts = parts + [seconds|string + \"s\"\
+              ] %}\n{% endif %} Garage door left open, auto closing in {{ parts|join('\
+              \ ') }}."
+            data:
+              notification_icon: mdi:garage-alert-variant
+              timeout: "{{ \n  (state_attr('timer.garage_auto_close_cooldown','finishes_at')\
+                \ | as_timestamp | int)\n  - 2 -\n  now() | as_timestamp | int\n}}"
+              tag: garage-auto-close
+              color: '#0000FF'
+              group: garage-auto-close
+              chronometer: true
+              when: '{{ state_attr(''timer.garage_auto_close_cooldown'',''finishes_at'')
+                | as_timestamp | int }}'
+              car_ui: true
+              actions:
+              - action: QUICK_GARAGE_CLOSE
+                title: Just Do It!
+                icon: mdi:play
+              - action: CANCEL_GARAGE_CLOSE
+                title: Cancel Auto Close
+                icon: mdi:stop
+          action: notify.notify_all_people
+        - alias: Listen for notification actions
+          timeout: '{{ state_attr(''timer.garage_auto_close_cooldown'',''remaining'')
+            }}'
+          wait_for_trigger:
+          - event_type: mobile_app_notification_action
+            event_data:
+              action: QUICK_GARAGE_CLOSE
+            trigger: event
+          - event_type: mobile_app_notification_action
+            event_data:
+              action: CANCEL_GARAGE_CLOSE
+            trigger: event
+        - alias: Perform the action
+          choose:
+          - alias: QUICK_GARAGE_CLOSE
+            conditions:
+            - condition: template
+              value_template: '{{ wait.trigger.event.data.action == ''QUICK_GARAGE_CLOSE''
+                }}'
+            sequence:
+            - data:
+                message: Got it, locking it down!
+                title: 'Costing Garage Door 🔐 '
+                data:
+                  notification_icon: mdi:garage-variant-lock
+                  tag: garage-auto-close
+                  color: '#00FF00'
+                  group: garage-auto-close
+                  timeout: 60
+                  car_ui: true
+              action: notify.notify_all_people
+            - metadata: {}
+              data: {}
+              action: timer.cancel
+              target:
+                entity_id: timer.garage_auto_close_cooldown
+            - device_id: 6737c7de72a532fd44e29f33cdf93028
+              domain: cover
+              entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+              type: close
+          - alias: CANCEL_GARAGE_CLOSE
+            conditions:
+            - condition: template
+              value_template: '{{ wait.trigger.event.data.action == ''CANCEL_GARAGE_CLOSE''
+                }}'
+            sequence:
+            - data:
+                data:
+                  notification_icon: mdi:garage-open-variant
+                  timeout: 60
+                  tag: garage-auto-close
+                  color: '#FF0000'
+                  group: garage-auto-close
+                  car_ui: true
+                title: Garage Staying Open 🔓
+                message: Okay, leaving the garage open, I hope you know what you're
+                  doing! 🤞
+              action: notify.notify_all_people
+            - metadata: {}
+              data: {}
+              action: timer.cancel
+              target:
+                entity_id: timer.garage_auto_close_cooldown
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 0
+        enabled: false
+      enabled: false
+    - device_id: a93693ffcf39cba4fc188f3832f84d85
+      domain: alarm_control_panel
+      entity_id: 349db00063226bd0c61be4333a837763
+      type: arm_away
+  mode: single
+- id: '1707024425328'
+  alias: Someone is home
+  description: ''
+  triggers:
+  - alias: When person 1 gets home
+    entity_id:
+    - zone.home
+    from: '0'
+    to: '1'
+    trigger: state
+  - alias: When person 2 gets home
+    entity_id:
+    - zone.home
+    to: '2'
+    enabled: true
+    trigger: state
+  conditions: []
+  actions:
+  - parallel:
+    - device_id: a93693ffcf39cba4fc188f3832f84d85
+      domain: alarm_control_panel
+      entity_id: 349db00063226bd0c61be4333a837763
+      type: arm_home
+    - device_id: 6737c7de72a532fd44e29f33cdf93028
+      domain: cover
+      entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+      type: open
+      enabled: true
+    - if:
+      - condition: device
+        device_id: 256c14799ff75c5937b5c678bc54f2ab
+        domain: vacuum
+        entity_id: 9f7f21b10f4047b96aa1715b20777fde
+        type: is_cleaning
+      then:
+      - device_id: 256c14799ff75c5937b5c678bc54f2ab
+        domain: vacuum
+        entity_id: 9f7f21b10f4047b96aa1715b20777fde
+        type: dock
+        enabled: true
+      enabled: false
+    - metadata: {}
+      data:
+        title: Docking Roborock ({{ states('sensor.roborock_s8_pro_ultra_cleaning_progress')
+          }}%)
+        message: Someone is home. Docking vacuum at {{ states('sensor.roborock_s8_pro_ultra_cleaning_progress')
+          }}% completion.
+        data:
+          image: '{{ state_attr(''image.roborock_s8_pro_ultra_map_0'', ''entity_picture'')
+            }}'
+      action: notify.notify_all_people
+      enabled: true
+  mode: single
+- id: '1707109812957'
+  alias: Set Joel Call Status
+  description: ''
+  triggers:
+  - entity_id:
+    - sensor.joel_s_s24_ultra_phone_state
+    trigger: state
+  - entity_id: person.joel_couchman
+    zone: zone.home
+    event: enter
+    trigger: zone
+  - entity_id: person.joel_couchman
+    zone: zone.home
+    event: leave
+    trigger: zone
+  conditions: []
+  actions:
+  - if:
+    - condition: or
+      conditions:
+      - condition: state
+        entity_id: sensor.joel_s_s24_ultra_phone_state
+        state: offhook
+      - condition: state
+        entity_id: sensor.joel_s_s24_ultra_phone_state
+        state: ringing
+    then:
+    - if:
+      - condition: zone
+        entity_id: person.joel_couchman
+        zone: zone.home
+      then:
+      - metadata: {}
+        data:
+          option: Yes - Home
+        target:
+          entity_id: input_select.joel_call_status
+        action: input_select.select_option
+      else:
+      - metadata: {}
+        data:
+          option: Yes - Other
+        target:
+          entity_id: input_select.joel_call_status
+        action: input_select.select_option
+    else:
+    - metadata: {}
+      data:
+        option: 'No'
+      target:
+        entity_id: input_select.joel_call_status
+      action: input_select.select_option
+  mode: single
+- id: '1708527302175'
+  alias: Morning Alarm
+  description: ''
+  trigger:
+  - platform: time
+    at: 08:30:00
+    id: Time Based
+    enabled: true
+  - platform: state
+    entity_id:
+    - binary_sensor.motion_hallway
+    to: 'on'
+    id: KidsUp
+    enabled: false
+  - platform: time
+    at: sensor.joel_s24_next_alarm
+    id: Time Based
+    enabled: false
+  condition:
+  - condition: or
+    conditions:
+    - condition: trigger
+      id:
+      - Time Based
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - KidsUp
+      - condition: time
+        after: 07:00:00
+        before: 08:00:00
+        weekday:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+        - sun
+        - sat
+  - condition: state
+    entity_id: person.joel_couchman
+    state: home
+  action:
+  - service: light.turn_on
+    metadata: {}
+    data:
+      brightness_pct: 10
+      transition: 10
+    target:
+      area_id: master_room
+  - service: media_player.volume_set
+    metadata: {}
+    data:
+      volume_level: 0.4
+    target:
+      area_id: master_room
+  - service: media_player.play_media
+    target:
+      entity_id: media_player.master_room_speaker
+    data:
+      media_content_id: media-source://radio_browser/ab780309-bfd8-4280-8e49-37b4e172e73e
+      media_content_type: audio/mpeg
+    metadata:
+      title: KIIS 97.3 - Brisbane - 97.3 FM (MP3)
+      thumbnail: https://i.iheart.com/v3/re/new_assets/63897b44310464f53fecf546
+      media_class: music
+      children_media_class: null
+      navigateIds:
+      - {}
+      - media_content_type: app
+        media_content_id: media-source://radio_browser
+      - media_content_type: music
+        media_content_id: media-source://radio_browser/country/AU
+    enabled: false
+  - service: media_player.play_media
+    target:
+      entity_id: media_player.master_room_speaker
+    data:
+      media_content_id: media-source://radio_browser/8e19306c-27eb-406f-8ccc-dc3146e0ae1f
+      media_content_type: audio/aac
+    metadata:
+      title: Triple M Brisbane
+      thumbnail: https://myradio-img-prod.scalabs.com.au/api/assets/72191957-f81d-40ff-8543-15d8a8b5ca90/
+      media_class: music
+      children_media_class: null
+      navigateIds:
+      - {}
+      - media_content_type: app
+        media_content_id: media-source://radio_browser
+      - media_content_type: music
+        media_content_id: media-source://radio_browser/country/AU
+    enabled: false
+  - service: media_player.play_media
+    target:
+      entity_id: media_player.master_room_speaker
+    data:
+      media_content_id: media-source://radio_browser/06faec0e-52eb-11e8-a4d1-52543be04c81
+      media_content_type: audio/aac
+    metadata:
+      title: Triple J
+      thumbnail: http://www.abc.net.au/core-assets/triplej/favicon-32x32.png
+      media_class: music
+      children_media_class: null
+      navigateIds:
+      - {}
+      - media_content_type: app
+        media_content_id: media-source://radio_browser
+      - media_content_type: music
+        media_content_id: media-source://radio_browser/country/AU
+    enabled: false
+  - service: media_player.play_media
+    target:
+      entity_id: media_player.master_room_speaker
+    data:
+      media_content_id: media-source://radio_browser/793e4bf5-c133-4a2d-bca6-abb78de48e16
+      media_content_type: audio/mpeg
+    metadata:
+      title: Triple J (QLD)
+      thumbnail: https://www.abc.net.au/core-assets/triplej/favicon-32x32.png
+      media_class: music
+      children_media_class: null
+      navigateIds:
+      - {}
+      - media_content_type: app
+        media_content_id: media-source://radio_browser
+      - media_content_type: music
+        media_content_id: media-source://radio_browser/country/AU
+    enabled: true
+  - service: media_player.play_media
+    target:
+      entity_id: media_player.master_room_speaker
+    data:
+      media_content_id: media-source://radio_browser/0e255737-8fa5-4531-9e24-d76af7b5e03c
+      media_content_type: audio/mpeg
+    metadata:
+      title: ABC Kids Listen
+      thumbnail: https://www.abc.net.au/core-assets/kidslisten/favicon-32x32.png
+      media_class: music
+      children_media_class: null
+      navigateIds:
+      - {}
+      - media_content_type: app
+        media_content_id: media-source://radio_browser
+      - media_content_type: music
+        media_content_id: media-source://radio_browser/country/AU
+    enabled: false
+  - service: media_player.play_media
+    target:
+      entity_id: media_player.master_room_speaker
+    data:
+      media_content_id: media-source://radio_browser/3f1bb8bc-1a9e-43db-a685-d9bd076d632d
+      media_content_type: audio/mpeg
+    metadata:
+      title: 1029 Hot Tomato
+      thumbnail: https://www.hottomato.com.au/wp-content/uploads/sites/17/2023/02/cropped-hottomato_icon-1.png?w=180
+      media_class: music
+      children_media_class: null
+      navigateIds:
+      - {}
+      - media_content_type: app
+        media_content_id: media-source://radio_browser
+      - media_content_type: music
+        media_content_id: media-source://radio_browser/country/AU
+    enabled: false
+  - service: media_player.play_media
+    target:
+      entity_id: media_player.master_room_speaker
+    data:
+      media_content_id: media-source://radio_browser/451eb03f-ab85-4915-90ca-0985dd3cb0e8
+      media_content_type: audio/mpeg
+    metadata:
+      title: ABC Kids Listen
+      thumbnail: https://www.abc.net.au/core-assets/kidslisten/favicon-32x32.png
+      media_class: music
+      children_media_class: null
+      navigateIds:
+      - {}
+      - media_content_type: app
+        media_content_id: media-source://radio_browser
+      - media_content_type: music
+        media_content_id: media-source://radio_browser/country/AU
+    enabled: false
+  mode: single
+- id: '1708682792300'
+  alias: Timer Finish Triggers
+  description: ''
+  trigger:
+  - platform: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.vacuum_start_cooldown
+    alias: Vacuum Timer Done
+    id: VACUUM
+  - platform: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.garage_auto_close_cooldown
+    alias: Garage Door Timer Done
+    id: GARAGE
+  condition: []
+  action:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - VACUUM
+      sequence:
+      - data:
+          title: Starting Vacuum 🧹
+          message: Just having a quick wash while you're out 😶‍🌫️🚿
+          data:
+            notification_icon: mdi:robot-vacuum
+            tag: vacuum-startup
+            color: '#00FF00'
+            group: test-notifications
+            chronometer: true
+            when: '{{ now() | as_timestamp | int }}'
+        action: notify.notify_all_people
+      - target:
+          device_id: 256c14799ff75c5937b5c678bc54f2ab
+        data: {}
+        action: vacuum.start
+      alias: VACUUM
+    - conditions:
+      - condition: trigger
+        id:
+        - GARAGE
+      - condition: device
+        device_id: 6737c7de72a532fd44e29f33cdf93028
+        domain: cover
+        entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+        type: is_open
+      - condition: not
+        conditions:
+        - condition: device
+          device_id: 6737c7de72a532fd44e29f33cdf93028
+          domain: cover
+          entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+          type: is_closing
+        - condition: device
+          device_id: 6737c7de72a532fd44e29f33cdf93028
+          domain: cover
+          entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+          type: is_opening
+      sequence:
+      - data:
+          message: I feel exposed... closing the garage door... 🫣
+          title: 'Closing Garage Door 🔐 '
+          data:
+            notification_icon: mdi:garage-variant-lock
+            tag: garage-auto-close
+            color: '#00FF00'
+            group: garage-auto-close
+            timeout: 300
+        action: notify.notify_all_people
+      - device_id: 6737c7de72a532fd44e29f33cdf93028
+        domain: cover
+        entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+        type: close
+      alias: GARAGE
+  mode: single
+- id: '1709822092940'
+  alias: Living Area - Night Lights
+  description: ''
+  triggers:
+  - type: occupied
+    device_id: b47e860070e428c00a834bafcd5dc2ae
+    entity_id: 9674f2155da2f68640bed975c8cc9b21
+    domain: binary_sensor
+    id: Person Seen
+    trigger: device
+  - type: not_occupied
+    device_id: b47e860070e428c00a834bafcd5dc2ae
+    entity_id: 9674f2155da2f68640bed975c8cc9b21
+    domain: binary_sensor
+    id: Person Gone
+    for:
+      hours: 0
+      minutes: 2
+      seconds: 0
+    trigger: device
+  - alias: Night
+    at: '23:00:00'
+    id: Night Time
+    trigger: time
+  - at: 07:00:00
+    alias: Morning
+    id: Morning Time
+    trigger: time
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Night Time
+      sequence:
+      - target:
+          entity_id:
+          - light.5m_light_strip
+          - light.5m_light_strip_local
+        data: {}
+        action: light.turn_off
+    - conditions:
+      - condition: trigger
+        id:
+        - Morning Time
+      sequence:
+      - target:
+          entity_id:
+          - light.5m_light_strip
+          - light.5m_light_strip_local
+        data:
+          brightness_pct: 62
+          color_name: lightskyblue
+        action: light.turn_on
+    - conditions:
+      - condition: trigger
+        id:
+        - Person Seen
+      - condition: time
+        after: '23:00:00'
+        before: 07:00:00
+      - condition: or
+        conditions:
+        - condition: device
+          type: is_off
+          device_id: 7e0cb4c910860c4830a8c4a98f8010de
+          entity_id: d75e3141bfb340b046dd400127276798
+          domain: light
+        - condition: device
+          type: is_off
+          device_id: 89112ded161fc441678f2efbc1b7772d
+          entity_id: 647da1f3d54eebbee241347dcde0b981
+          domain: light
+      sequence:
+      - target:
+          entity_id:
+          - light.5m_light_strip
+          - light.5m_light_strip_local
+        data:
+          color_name: lightsalmon
+          brightness_pct: 20
+        action: light.turn_on
+    - conditions:
+      - condition: trigger
+        id:
+        - Person Gone
+      - condition: time
+        after: '23:00:00'
+        before: 07:00:00
+      sequence:
+      - target:
+          entity_id:
+          - light.5m_light_strip
+          - light.5m_light_strip_local
+        data: {}
+        action: light.turn_off
+  mode: single
+- id: '1710160809162'
+  alias: Presense Lights - Living Area
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - binary_sensor.occupancy_dining_room
+    to: 'on'
+    id: Dining Room - On
+  - platform: state
+    entity_id:
+    - binary_sensor.occupancy_dining_room
+    to: 'off'
+    id: Dining Room - Off
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 20
+  - platform: state
+    entity_id:
+    - binary_sensor.occupancy_living_room
+    to: 'on'
+    id: Living Room - On
+  - platform: state
+    entity_id:
+    - binary_sensor.occupancy_living_room
+    to: 'off'
+    id: Living Room - Off
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 20
+  - platform: state
+    entity_id:
+    - binary_sensor.occupancy_kitchen
+    to: 'on'
+    id: Kitchen - On
+  - platform: state
+    entity_id:
+    - binary_sensor.occupancy_kitchen
+    to: 'on'
+    id: Kitchen - On - Long
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 20
+  - platform: state
+    entity_id:
+    - binary_sensor.occupancy_kitchen
+    to: 'off'
+    id: Kitchen - Off
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 20
+  - platform: state
+    entity_id:
+    - binary_sensor.occupancy_entry
+    to: 'on'
+    id: Entry - On
+  - platform: state
+    entity_id:
+    - binary_sensor.occupancy_entry
+    to: 'off'
+    id: Entry - Off
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 20
+  - platform: state
+    entity_id:
+    - binary_sensor.occupancy_front_hallway
+    to: 'on'
+    id: Front Hallway - On
+  - platform: state
+    entity_id:
+    - binary_sensor.occupancy_front_hallway
+    to: 'off'
+    id: Front Hallway - Off
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 20
+  condition:
+  - condition: state
+    entity_id: input_boolean.presence_lights_active
+    state: 'on'
+  action:
+  - alias: Set Variables
+    choose:
+    - conditions:
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: binary_sensor.time_period_morning_lights
+          state: 'on'
+        - condition: state
+          entity_id: binary_sensor.time_evening_lights
+          state: 'on'
+      sequence:
+      - variables:
+          auto_on: true
+          brightness: 100
+          transition: 3
+          color_temp: 175
+      - service: script.presense_sensing_living_area
+        metadata: {}
+        data:
+          trigger: '{{ trigger.id }}'
+          auto_on: '{{ auto_on }}'
+          brightness: '{{ brightness | int }}'
+          transition: '{{ transition | int }}'
+          color_temp: '{{ color_temp | int }}'
+      alias: If Morning or Evening
+    - conditions:
+      - condition: time
+        after: '20:00:00'
+        before: 00:00:00
+        enabled: false
+      - condition: state
+        entity_id: binary_sensor.time_night_lights
+        state: 'on'
+      sequence:
+      - variables:
+          auto_on: true
+          brightness: 1
+          transition: 20
+          color_temp: 350
+      - service: script.presense_sensing_living_area
+        metadata: {}
+        data:
+          trigger: '{{ trigger.id }}'
+          auto_on: '{{ auto_on }}'
+          brightness: '{{ brightness | int }}'
+          transition: '{{ transition | int }}'
+          color_temp: '{{ color_temp | int }}'
+      alias: If Night, before Sleep
+    enabled: true
+    default:
+    - service: script.presense_sensing_living_area
+      metadata: {}
+      data:
+        trigger: '{{ trigger.id }}'
+        auto_on: false
+        brightness: 100
+        transition: 3
+        color_temp: 175
+  mode: single
+- id: '1711715249526'
+  alias: Daily Triggers
+  description: ''
+  trigger:
+  - platform: time
+    at: 05:00:00
+    id: 5am
+  condition:
+  - condition: template
+    value_template: "{{ states.update | selectattr('state','eq','on') |\n    map(attribute='entity_id')\
+      \ | list | count > 0 }}"
+  action:
+  - service: update.install
+    metadata: {}
+    data:
+      backup: true
+    target:
+      device_id:
+      - ecac6b2979ac76307173797a7776f1ff
+      - fb24481138757f188377845e43db8f8a
+      - 16099460f026333b896765da6db85f23
+      - 8325332d3751ab88dad7e38ccc207a30
+      - 3ef8948824b6c0cbefe677f42aca770c
+      - 5a6c2483d3c4eb9e0548de450cbae843
+      - 6c0a870301f04ec47564075b58aa115a
+      - 31cca87213926c2e5aaa876e09e25da1
+      - 5feaf45b2f432d447fe226257a8cb0c5
+      - ac2f5a6401c59c80b9a10be18c487141
+      - 06aa9a1352a258ce436cd8a0cc44b795
+      - 9ae484c8237c9a3379170600caba940b
+      - e49001cab18539da856e6635cac31671
+      - 1a761a8d3cd81d8936a7b9dcd7e3ab04
+      - 25fc2130fd4e79f2e736a63b293bbcbf
+      - d5fdeb7ca226071aafaf6a1099a386ae
+      - 430a39a1a7f0508fe2b957518c3720bc
+      - 3e4bf99c9dcc390a8e2dcafc1b33f841
+      - cbc33acddbe1946f0aa2deac5b8391a1
+      - 256a6a00aa6c74e11be95c5266ab7518
+      - bbdaa1410bf97d586182d84fe607cb0b
+      - 98f680b9ea8f8d215c864db0a2acc101
+      - 9d274eacf880763ea5bb5bc42fd2e519
+      - e5f941a4dfb44932d431b372e4b78097
+      - bf40d0f53cad62e854bf646b580a0348
+      - 2e2e28511c33a1c2e968ac63c2912f76
+      - a89b9e3a2a7e253759340ba009a4e065
+      - 04b12276502e9c2c30c878e2b422a80b
+      - 66f0de0dedaebf365d2883e3169d1e63
+      - 203cee9cc6002b7a44f6db1639d5d947
+      - f1a2db703f06c451bb0053d13fc873d1
+      - 62785da95953afe23da3e2d016ec7393
+      - ccd496b890e37e4a15c407a460b319ee
+      - 790454e66ffc4a441f7d0e7323fe4307
+      - ba4dd1bc013b29f3cfb9dcdafddff5df
+      - cca338ea6c7e346e023387884c27515c
+      - 0953273c3f798f5730f64a9f7dcf4a34
+      - 969605f9b615cb23cb69129a6e161b43
+      - 5b9b9dc5e9d392d52a32efea41ec9d83
+      - 3a06f5a428cca76f07dedb33b9320873
+      - a6834cb0e8cad74ed41a7142b6380297
+      - 073dd386d848f6fc21f6927e2a350129
+      - 5a637532a8ab36c00855786977ddf134
+      - d648f136653659d6c13a4960f48ef852
+      - df6f244008d3491dd1d368b90559b4ba
+      - 8ba7cd15690fbb1adb5a8c82ebe9f830
+      - a37f91608ff32f56e372da994d1994da
+      - e16b2544efceec3fc58135ff12c89b32
+      - fb3e25997ef658cbf80c77f94991f317
+      - 87e5f1cdbfee57e7989329a3f5bb0a73
+      - cd54a47fee40baf0f3cc22e2e8630804
+      - 905f78ddd5c99df66adf215643738b0d
+      - 701ebb14655cd7db11d6900cb68c63d5
+      - b257e6935bc60f8207ddbc88e79c6ce0
+      - eb136ffb1318860a149db551f57e1819
+      - ad2670a2b261a5b96efe93f7a89a6728
+      - 783c3626f34a5094c5a2cc416a3d11d9
+      - 266341e44f961f1dec8967ac6c32a6d3
+      - 316efc6027791d22e6112471d8c2dfca
+      - a7b2aabd3c25a9054843fe39656a2257
+      - 5158fcd99b623abe747f35aa7da2c30c
+      - ee438924cab573c9c82f9d912fc51024
+      - 2c47a3549984f970a2e0aeba641ad4a4
+      - 4109bbaffff03526d835dfe32e0d80df
+      - cb2f6f5c2284f26ee5538f4e96f14499
+      - 65e8b7b00ac42f1df4e02805ed2212f9
+      - c218319a57ad38ce21bcb42b8ab262cb
+      - a8410512b7feff580efd18bfdfad06e8
+      - 768a840d00887e01af348070560920ba
+      - c20d79c129d09d27c543baecd5672b6f
+      - e18689ba6521038ed487ea13e7c4964d
+      - aaba7688c063ca31e02ec50f02a7d113
+      - bee822635e0d260b4469b777ffc5d50f
+      - 9dfd4f22302bf571215e0dad3e7e9d7c
+      - 1f5586ee18eda8f2646b1f96ceec33c6
+      - 55bf1ca6f09886a62bade29be9f97ef6
+      - 60dbc6cb399ee07d1305d7e6bf939059
+      - 7b6e49dbf94048e29bb2cc139f0f897e
+      - ff8b4dc1163781bdc9497b6629b008f2
+      - 0e9e7a11d72e7e9255556adbd70102e0
+    enabled: false
+  - service: update.install
+    metadata: {}
+    data: {}
+    target:
+      entity_id: '{{ states.update | selectattr(''state'',''eq'',''on'') | map(attribute=''entity_id'')
+        | list }}'
+  mode: single
+- id: '1725193327953'
+  alias: Bellman On/Off at Night
+  description: ''
+  triggers:
+  - entity_id:
+    - sensor.joel_s_s24_ultra_charger_type
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 0
+    id: 'ON'
+    from: none
+    enabled: false
+    trigger: state
+  - entity_id:
+    - sensor.joel_s_s24_ultra_charger_type
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 0
+    id: 'OFF'
+    to: none
+    enabled: false
+    trigger: state
+  - at: '21:00:00'
+    id: 'ON'
+    trigger: time
+  - at: 09:00:00
+    id: 'OFF'
+    trigger: time
+  - type: turned_off
+    device_id: b257e6935bc60f8207ddbc88e79c6ce0
+    entity_id: e2d67472834a7398932d7241f13e02a9
+    domain: switch
+    for:
+      hours: 0
+      minutes: 30
+      seconds: 0
+    trigger: device
+  - type: turned_on
+    device_id: 80604dc6b19b1313c18d02d34cc9648b
+    entity_id: 7e9bf680b0ae699c894a935b152a0118
+    domain: light
+    id: MORNING_OFF
+    trigger: device
+  conditions:
+  - condition: or
+    conditions:
+    - condition: trigger
+      id:
+      - 'OFF'
+    - condition: time
+      after: '21:00:00'
+      before: 09:00:00
+    - condition: and
+      conditions:
+      - condition: time
+        after: 07:00:00
+        before: 09:00:00
+      - condition: trigger
+        id:
+        - MORNING_OFF
+      - condition: device
+        type: is_on
+        device_id: b257e6935bc60f8207ddbc88e79c6ce0
+        entity_id: e2d67472834a7398932d7241f13e02a9
+        domain: switch
+    enabled: true
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - 'ON'
+      sequence:
+      - type: turn_on
+        device_id: b257e6935bc60f8207ddbc88e79c6ce0
+        entity_id: e2d67472834a7398932d7241f13e02a9
+        domain: switch
+    - conditions:
+      - condition: trigger
+        id:
+        - 'OFF'
+      sequence:
+      - type: turn_off
+        device_id: b257e6935bc60f8207ddbc88e79c6ce0
+        entity_id: e2d67472834a7398932d7241f13e02a9
+        domain: switch
+    - conditions:
+      - condition: trigger
+        id:
+        - MORNING_OFF
+      sequence:
+      - type: turn_off
+        device_id: b257e6935bc60f8207ddbc88e79c6ce0
+        entity_id: e2d67472834a7398932d7241f13e02a9
+        domain: switch
+  mode: single
+- id: '1727867809486'
+  alias: Garage Door
+  description: ''
+  triggers:
+  - device_id: 6737c7de72a532fd44e29f33cdf93028
+    domain: cover
+    entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+    type: opened
+    trigger: device
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 20
+  conditions: []
+  actions:
+  - action: notify.notify_joel
+    metadata: {}
+    data:
+      message: Garage Open
+  mode: single
+- id: '1731169214938'
+  alias: WLED Timer
+  description: ''
+  triggers:
+  - trigger: sun
+    event: sunrise
+    offset: '0'
+    id: 'OFF'
+  - trigger: sun
+    event: sunset
+    offset: '0'
+    id: 'ON'
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - 'ON'
+      sequence:
+      - type: turn_on
+        device_id: b9788610876386478a627d2aa815a7ee
+        entity_id: 3ca0303809bb9fc776f00e834442bb4b
+        domain: light
+    - conditions:
+      - condition: trigger
+        id:
+        - 'OFF'
+      sequence:
+      - type: turn_off
+        device_id: b9788610876386478a627d2aa815a7ee
+        entity_id: 3ca0303809bb9fc776f00e834442bb4b
+        domain: light
+        metadata:
+          secondary: false
+  mode: single
+- id: '1751191271303'
+  alias: Sunrise
+  description: ''
+  triggers:
+  - trigger: sun
+    event: sunrise
+    offset: 0
+  - trigger: time
+    at: '23:00:00'
+  conditions: []
+  actions:
+  - type: turn_off
+    device_id: b257e6935bc60f8207ddbc88e79c6ce0
+    entity_id: 409aeea308de673617824e0498812b8c
+    domain: switch
+  mode: single
+- id: '1751191299906'
+  alias: Sunset
+  description: ''
+  triggers:
+  - trigger: sun
+    event: sunset
+    offset: 0
+  conditions: []
+  actions:
+  - type: turn_on
+    device_id: b257e6935bc60f8207ddbc88e79c6ce0
+    entity_id: 409aeea308de673617824e0498812b8c
+    domain: switch
+  mode: single

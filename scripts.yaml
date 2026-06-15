@@ -1,0 +1,493 @@
+fade_volume:
+  alias: Fade the volume of a media player
+  mode: restart
+  fields:
+    target_player:
+      name: Target media player
+      description: Target media player of volume fade.
+      required: true
+      example: media_player.lounge_sonos
+      selector:
+        entity:
+          domain: media_player
+    target_volume:
+      name: Target volume
+      description: Volume the media play will be at the end of the fade duration.
+      required: true
+      default: 0.5
+      example: '0.5'
+      selector:
+        number:
+          max: 1
+          min: 0
+          step: 0.01
+          mode: slider
+    duration:
+      name: Fade duration
+      description: Length of time in seconds the fade should take.
+      required: true
+      default: 5
+      example: '5'
+      selector:
+        number:
+          mode: box
+          min: 0
+          max: 100000
+          unit_of_measurement: s
+    curve:
+      name: Fade curve algorithm
+      description: Shape of the fade curve to apply.
+      required: true
+      default: logarithmic
+      example: logarithmic
+      selector:
+        select:
+          options:
+          - logarithmic
+          - bezier
+          - linear
+  variables:
+    steps_per_second: 10
+    total_steps: '{{ (steps_per_second * duration) | int(0) }}'
+    start_volume: '{{ state_attr(target_player, ''volume_level'') | float(0) }}'
+    start_diff: '{{ (target_volume - start_volume) | float(0) }}'
+  sequence:
+  - repeat:
+      while:
+      - condition: template
+        value_template: '{{ repeat.index < total_steps }}'
+      - condition: template
+        value_template: '{{ ((state_attr(target_player, "volume_level") - target_volume)
+          | abs) > 0.001 }}'
+      sequence:
+      - service: media_player.volume_set
+        data_template:
+          entity_id: '{{ target_player }}'
+          volume_level: "{% set t = repeat.index / total_steps %} {% if curve == 'logarithmic'\
+            \ %}\n  {{ (start_volume + (t / (1 + (1 - t))) * start_diff) | float(0)\
+            \ }}\n{% elif curve == 'bezier' %}\n  {{ (start_volume + (t * t * (3 -\
+            \ 2 * t)) * start_diff) | float(0) }}\n{% else %}\n  {{ (start_volume\
+            \ + t * start_diff) | float(0) }}\n{% endif %}\n"
+      - delay: '00:00:00.1'
+  - service: media_player.volume_set
+    data_template:
+      entity_id: '{{ target_player }}'
+      volume_level: '{{ target_volume }}'
+  icon: mdi:tune-vertical
+light_coalesce:
+  alias: Light Coalesce
+  sequence:
+  - service: script.debug_log
+    data:
+      notify_text: No lights found to trigger
+  - stop: No lights found to trigger
+    error: true
+  mode: queued
+  fields:
+    devices:
+      selector:
+        entity:
+          multiple: true
+          domain:
+          - light
+          - switch
+      name: Light/Switch Entities
+      required: true
+      description: In order, the first available light found will be triggered. No
+        others.
+    state:
+      selector:
+        select:
+          options:
+          - 'On'
+          - 'Off'
+          - Toggle
+      default: Toggle
+      name: Switch Type
+      required: true
+    brightness:
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+      default: 100
+      name: Brightness
+      required: false
+    transition_seconds:
+      selector:
+        number:
+          min: 0
+          max: 300
+          step: 1
+      default: 2
+      name: Transition (seconds)
+      required: false
+    color_temp:
+      selector:
+        number:
+          min: 153
+          max: 500
+          step: 1
+      name: Color Temp
+      default: 175
+      required: false
+  icon: mdi:lightbulb-multiple-outline
+debug_log:
+  alias: Debug Log
+  sequence:
+  - if:
+    - condition: state
+      entity_id: input_boolean.debug_mode
+      state: 'on'
+    then:
+    - service: notify.mobile_app_joel_s24
+      data:
+        message: <b>DEBUG:</b> {{ notify_text }}
+  mode: single
+  icon: mdi:timeline-question
+  fields:
+    notify_text:
+      selector:
+        text:
+          prefix: 'DEBUG: '
+      required: true
+      name: Notify Text
+presense_sensing_living_area:
+  alias: Presense Sensing - Living Area
+  sequence:
+  - alias: Trigger Actions
+    choose:
+    - conditions:
+      - alias: Trigger = 'Dining Room - On'
+        condition: template
+        value_template: '{{ trigger == "Dining Room - On" }}'
+      - condition: template
+        value_template: '{{ auto_on }}'
+      - condition: state
+        entity_id: timer.dining_room_override_lights
+        state: idle
+      sequence:
+      - service: script.light_coalesce
+        metadata: {}
+        data:
+          state: 'On'
+          brightness: '{{ brightness | int }}'
+          devices:
+          - light.dining_room_local
+          - light.dining_room_cloud
+          transition_seconds: '{{ transition | int }}'
+          color_temp: '{{ color_temp | int }}'
+    - conditions:
+      - alias: Trigger = 'Dining Room - Off'
+        condition: template
+        value_template: '{{ trigger == "Dining Room - Off" }}'
+      - condition: state
+        entity_id: timer.dining_room_override_lights
+        state: idle
+      sequence:
+      - service: script.light_coalesce
+        metadata: {}
+        data:
+          state: 'Off'
+          devices:
+          - light.dining_room_local
+          - light.dining_room_cloud
+          - light.shellydimmer2_dining_room
+          transition_seconds: 10
+    - conditions:
+      - alias: Trigger = 'Living Room - On'
+        condition: template
+        value_template: '{{ trigger == "Living Room - On" }}'
+      - condition: template
+        value_template: '{{ auto_on }}'
+      - condition: state
+        entity_id: timer.living_room_override_lights
+        state: idle
+      sequence:
+      - service: script.light_coalesce
+        metadata: {}
+        data:
+          state: 'On'
+          brightness: '{{ brightness | int }}'
+          devices:
+          - light.living_room_local
+          - light.living_room_cloud
+          transition_seconds: '{{ transition | int }}'
+          color_temp: '{{ color_temp | int }}'
+    - conditions:
+      - alias: Trigger = 'Living Room - Off'
+        condition: template
+        value_template: '{{ trigger == "Living Room - Off" }}'
+      - condition: state
+        entity_id: timer.living_room_override_lights
+        state: idle
+      sequence:
+      - service: script.light_coalesce
+        metadata: {}
+        data:
+          state: 'Off'
+          devices:
+          - light.living_room_local
+          - light.living_room_cloud
+          transition_seconds: 10
+    - conditions:
+      - alias: Trigger = 'Entry - On'
+        condition: template
+        value_template: '{{ trigger == "Entry - On" }}'
+      - condition: template
+        value_template: '{{ auto_on }}'
+      - condition: state
+        entity_id: timer.entry_override_lights
+        state: idle
+      sequence:
+      - service: script.light_coalesce
+        metadata: {}
+        data:
+          state: 'On'
+          brightness: '{{ brightness | int }}'
+          devices:
+          - light.entry_local
+          - light.entry_cloud
+          transition_seconds: '{{ transition | int }}'
+          color_temp: '{{ color_temp | int }}'
+    - conditions:
+      - alias: Trigger = 'Entry - Off'
+        condition: template
+        value_template: '{{ trigger == "Entry - Off" }}'
+      - condition: state
+        entity_id: timer.entry_override_lights
+        state: idle
+      sequence:
+      - service: script.light_coalesce
+        metadata: {}
+        data:
+          state: 'Off'
+          devices:
+          - light.entry_local
+          - light.entry_cloud
+          transition_seconds: 10
+    - conditions:
+      - alias: Trigger = 'Kitchen - On'
+        condition: template
+        value_template: '{{ trigger == "Kitchen - On" }}'
+      - condition: template
+        value_template: '{{ auto_on }}'
+      - condition: state
+        entity_id: timer.kitchen_override_lights
+        state: idle
+      sequence:
+      - service: script.light_coalesce
+        metadata: {}
+        data:
+          state: 'On'
+          brightness: '{{ brightness | int }}'
+          devices:
+          - light.kitchen_local
+          - light.kitchen_cloud
+          transition_seconds: '{{ transition | int }}'
+          color_temp: '{{ color_temp | int }}'
+    - conditions:
+      - alias: Trigger = 'Kitchen - On'
+        condition: template
+        value_template: '{{ trigger == "Kitchen - On - Long" }}'
+      - condition: template
+        value_template: '{{ auto_on }}'
+      - condition: state
+        entity_id: timer.kitchen_override_lights
+        state: idle
+      sequence:
+      - service: script.light_coalesce
+        metadata: {}
+        data:
+          state: 'On'
+          brightness: '{{ brightness | int }}'
+          devices:
+          - light.kitchen_bench
+          transition_seconds: '{{ transition | int }}'
+          color_temp: '{{ color_temp | int }}'
+    - conditions:
+      - alias: Trigger = 'Kitchen - Off'
+        condition: template
+        value_template: '{{ trigger == "Kitchen - Off" }}'
+      - condition: state
+        entity_id: timer.kitchen_override_lights
+        state: idle
+      sequence:
+      - service: script.light_coalesce
+        metadata: {}
+        data:
+          state: 'Off'
+          devices:
+          - light.kitchen_local
+          - light.kitchen_cloud
+          transition_seconds: 10
+      - service: script.light_coalesce
+        metadata: {}
+        data:
+          state: 'Off'
+          devices:
+          - light.kitchen_bench
+          transition_seconds: 10
+    - conditions:
+      - alias: Trigger = 'Front Hallway - On'
+        condition: template
+        value_template: '{{ trigger == "Front Hallway - On" }}'
+      - condition: template
+        value_template: '{{ auto_on }}'
+      - condition: state
+        entity_id: timer.front_hallway_override_lights
+        state: idle
+      sequence:
+      - service: script.light_coalesce
+        metadata: {}
+        data:
+          state: 'On'
+          brightness: '{{ brightness | int }}'
+          devices:
+          - light.front_hallway_local
+          - light.front_hallway_cloud
+          transition_seconds: '{{ transition | int }}'
+          color_temp: '{{ color_temp | int }}'
+    - conditions:
+      - alias: Trigger = 'Front Hallway - Off'
+        condition: template
+        value_template: '{{ trigger == "Front Hallway - Off" }}'
+      - condition: state
+        entity_id: timer.front_hallway_override_lights
+        state: idle
+      sequence:
+      - service: script.light_coalesce
+        metadata: {}
+        data:
+          state: 'Off'
+          devices:
+          - light.front_hallway_local
+          - light.front_hallway_cloud
+          transition_seconds: 10
+  mode: parallel
+  fields:
+    trigger:
+      selector:
+        text: null
+      name: Trigger ID
+      required: true
+    auto_on:
+      selector:
+        boolean: {}
+      name: Auto On
+      required: true
+    brightness:
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+      name: Brightness
+      required: true
+    transition:
+      selector:
+        number:
+          min: 0
+          max: 300
+          step: 1
+      name: Transition
+      required: true
+    color_temp:
+      selector:
+        number:
+          min: 135
+          max: 500
+      name: Color Temp
+      default: 135
+  icon: mdi:light-recessed
+'1711716326355':
+  alias: Scheduled Auto Update Items
+  sequence:
+  - repeat:
+      for_each: '{{ devices | list }}'
+      sequence: []
+  mode: queued
+  fields:
+    update_list:
+      selector:
+        entity:
+          multiple: true
+          domain:
+          - update
+      name: Update Items
+      required: true
+      description: Elements To Check And Update
+    time_of_day:
+      selector:
+        time: {}
+      name: Time of Day
+      required: true
+  icon: mdi:upload-lock
+  max: 10
+repeat_reminders:
+  alias: Repeat Reminders
+  sequence:
+  - delay: '{{ wait_for | default(''00:00:00'') }}'
+  - repeat:
+      sequence:
+      - data:
+          title: '{{ notification_title }}'
+          message: '{{ notification_message }}'
+          data:
+            '[object Object]': null
+        target: '{{ notification_targets }}'
+        action: notify.notify
+      - delay: '{{ remind_every }}'
+      while:
+      - condition: template
+        value_template: '{{ loop_if }}'
+  fields:
+    loop_if:
+      selector:
+        condition: {}
+      name: Loop If
+      description: Reminder will continue until this is false
+      required: true
+    remind_every:
+      selector:
+        duration:
+          enable_day: true
+      name: Remind Every
+      description: How often to send reminders
+      default:
+        hours: 1
+        minutes: 0
+        seconds: 0
+        days: 0
+      required: true
+    notification_title:
+      selector:
+        text: null
+      name: Notification Title
+      required: false
+    notification_message:
+      selector:
+        text: null
+      name: Notification Message
+      required: true
+    notification_data:
+      selector:
+        template: {}
+      name: Notification Data
+      default: ''
+      required: false
+    notification_targets:
+      selector:
+        target: {}
+      name: Notification Targets
+      required: true
+    wait_for:
+      selector:
+        duration: {}
+      name: Wait For
+      description: How long to wait initially before starting the loop
+      required: false
+  description: Sends reminders at regular intervals until the specified condition
+    becomes false.
+  icon: mdi:bell-cog-outline

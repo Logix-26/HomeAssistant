@@ -1,0 +1,106 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+#my:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+template: !include templates.yaml
+
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 172.30.33.0/24
+
+# # Example configuration.yaml entry
+# google_assistant:
+#   project_id: static-welder-410904
+#   service_account: !include SERVICE_ACCOUNT.JSON
+#   report_state: true
+
+# Example configuration.yaml entry
+sensor: !include sensors.yaml
+
+homeassistant:
+  auth_providers:
+    - type: homeassistant
+    - type: trusted_networks
+      trusted_networks:
+        - 192.168.50.0/24
+        - fd00::/8
+#camera:
+#  - platform: xiaomi_cloud_map_extractor
+#    host: !secret xiaomi_vacuum_host
+#    token: !secret xiaomi_vacuum_token
+#    username: !secret xiaomi_cloud_username
+#    password: !secret xiaomi_cloud_password
+#    draw: ['all']
+#    attributes:
+#      - calibration_points
+
+notify:
+  - platform: group
+    name: "Notify Home"
+    services:
+      - service: living_room_tv
+        data:
+          data:
+            duration: 400
+            position: "bottom-left"
+            fontsize: "medium"
+            transparency: "75%"
+            color: "teal"
+            interrupt: 0
+      - service: spare_room_tv
+        data:
+          data:
+            duration: 4
+            position: "bottom-left"
+            fontsize: "medium"
+            transparency: "75%"
+            color: "teal"
+            interrupt: 0
+      - service: mobile_app_office_tablet
+        data:
+          data:
+            ttl: 0
+            priority: high
+      - service: mobile_app_kitchen_tablet
+        data:
+          data:
+            ttl: 0
+            priority: high
+  - platform: group
+    name: "Notify Kase"
+    services:
+      - service: mobile_app_kase
+        data:
+          data:
+            ttl: 0
+            priority: high
+  - platform: group
+    name: "Notify Joel"
+    services:
+      - service: mobile_app_joel_s_s24_ultra
+        data:
+          data:
+            ttl: 0
+            priority: high
+      - service: mobile_app_joel_galaxy_watch6
+        data:
+          data:
+            ttl: 0
+            priority: high
+  - platform: group
+    name: "Notify All People"
+    services:
+      - service: notify_joel
+  - platform: group
+    name: "Notify All"
+    services:
+      - service: notify_all_people
+      - service: notify_home

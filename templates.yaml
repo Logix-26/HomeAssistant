@@ -1,0 +1,161 @@
+
+- sensor:
+  - name: "Auto Lights - Entry"
+    state: >
+      {% if is_state('input_boolean.presence_lights_active', 'on') and is_state('timer.entry_override_lights', 'idle') %}
+        {% if is_state('binary_sensor.occupancy_entry', 'on') %}
+          Detected
+        {% else %}
+          Clear
+        {% endif %}
+      {% else %}
+        {% if is_state('binary_sensor.occupancy_entry', 'on') %}
+          Disabled (Detected)
+        {% else %}
+          Disabled (Clear)
+        {% endif %}
+      {% endif %}
+    icon: >-
+      {% if is_state('input_boolean.presence_lights_active', 'on') and is_state('timer.entry_override_lights', 'idle') %}
+        {% if is_state('binary_sensor.occupancy_entry', 'on') %}
+          mdi:home
+        {% else %}
+          mdi:home-outline
+        {% endif %}
+      {% else %}
+        {% if is_state('binary_sensor.occupancy_entry', 'on') %}
+          mdi:home-off
+        {% else %}
+          mdi:home-off-outline
+        {% endif %}
+      {% endif %}
+
+- sensor:
+  - name: "Auto Lights - Living Room"
+    state: >
+      {% if is_state('input_boolean.presence_lights_active', 'on') and is_state('timer.living_room_override_lights', 'idle') %}
+        {% if is_state('binary_sensor.occupancy_living_room', 'on') %}
+          Detected
+        {% else %}
+          Clear
+        {% endif %}
+      {% else %}
+        {% if is_state('binary_sensor.occupancy_living_room', 'on') %}
+          Disabled (Detected)
+        {% else %}
+          Disabled (Clear)
+        {% endif %}
+      {% endif %}
+    icon: >-
+      {% if is_state('input_boolean.presence_lights_active', 'on') and is_state('timer.living_room_override_lights', 'idle') %}
+        {% if is_state('binary_sensor.occupancy_living_room', 'on') %}
+          mdi:home
+        {% else %}
+          mdi:home-outline
+        {% endif %}
+      {% else %}
+        {% if is_state('binary_sensor.occupancy_living_room', 'on') %}
+          mdi:home-off
+        {% else %}
+          mdi:home-off-outline
+        {% endif %}
+      {% endif %}
+
+- sensor:
+  - name: "Auto Lights - Dining Room"
+    state: >
+      {% if is_state('input_boolean.presence_lights_active', 'on') and is_state('timer.dining_room_override_lights', 'idle') %}
+        {% if is_state('binary_sensor.occupancy_dining_room', 'on') %}
+          Detected
+        {% else %}
+          Clear
+        {% endif %}
+      {% else %}
+        {% if is_state('binary_sensor.occupancy_dining_room', 'on') %}
+          Disabled (Detected)
+        {% else %}
+          Disabled (Clear)
+        {% endif %}
+      {% endif %}
+    icon: >-
+      {% if is_state('input_boolean.presence_lights_active', 'on') and is_state('timer.dining_room_override_lights', 'idle') %}
+        {% if is_state('binary_sensor.occupancy_dining_room', 'on') %}
+          mdi:home
+        {% else %}
+          mdi:home-outline
+        {% endif %}
+      {% else %}
+        {% if is_state('binary_sensor.occupancy_dining_room', 'on') %}
+          mdi:home-off
+        {% else %}
+          mdi:home-off-outline
+        {% endif %}
+      {% endif %}
+    attributes:
+      override_remaining: >
+        {{ (as_timestamp(state_attr('timer.dining_room_override_lights','finishes_at'))
+           -
+           as_timestamp(now())) | int
+        }}
+
+- sensor:
+  - name: "Auto Lights - Kitchen"
+    state: >
+      {% if is_state('input_boolean.presence_lights_active', 'on') and is_state('timer.kitchen_override_lights', 'idle') %}
+        {% if is_state('binary_sensor.occupancy_kitchen', 'on') %}
+          Detected
+        {% else %}
+          Clear
+        {% endif %}
+      {% else %}
+        {% if is_state('binary_sensor.occupancy_kitchen', 'on') %}
+          Disabled (Detected)
+        {% else %}
+          Disabled (Clear)
+        {% endif %}
+      {% endif %}
+    icon: >-
+      {% if is_state('input_boolean.presence_lights_active', 'on') and is_state('timer.kitchen_override_lights', 'idle') %}
+        {% if is_state('binary_sensor.occupancy_kitchen', 'on') %}
+          mdi:home
+        {% else %}
+          mdi:home-outline
+        {% endif %}
+      {% else %}
+        {% if is_state('binary_sensor.occupancy_kitchen', 'on') %}
+          mdi:home-off
+        {% else %}
+          mdi:home-off-outline
+        {% endif %}
+      {% endif %}
+
+- sensor:
+  - name: "Auto Lights - Front Hallway"
+    state: >
+      {% if is_state('input_boolean.presence_lights_active', 'on') and is_state('timer.front_hallway_override_lights', 'idle') %}
+        {% if is_state('binary_sensor.occupancy_front_hallway', 'on') %}
+          Detected
+        {% else %}
+          Clear
+        {% endif %}
+      {% else %}
+        {% if is_state('binary_sensor.occupancy_front_hallway', 'on') %}
+          Disabled (Detected)
+        {% else %}
+          Disabled (Clear)
+        {% endif %}
+      {% endif %}
+    icon: >-
+      {% if is_state('input_boolean.presence_lights_active', 'on') and is_state('timer.front_hallway_override_lights', 'idle') %}
+        {% if is_state('binary_sensor.occupancy_front_hallway', 'on') %}
+          mdi:home
+        {% else %}
+          mdi:home-outline
+        {% endif %}
+      {% else %}
+        {% if is_state('binary_sensor.occupancy_front_hallway', 'on') %}
+          mdi:home-off
+        {% else %}
+          mdi:home-off-outline
+        {% endif %}
+      {% endif %}

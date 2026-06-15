@@ -1,0 +1,35 @@
+#service: notify.notify_all_people
+service: notify.notify_joel
+data:
+  #message: "clear_notification"
+  message: >
+    This is a <b><span style="color: red">HTML</span></b> <i>text</i><br><br>This is a text after a new line
+  title: "Cool HTML formatting"
+  #message: The garage door has been open for 10 minutes.
+  #title: Your Garage Door Friend
+  #target: platform specific
+  data:
+    #notification_icon: "mdi:cellphone"
+    icon_url: "https://github.com/home-assistant/assets/blob/master/logo/logo-small.png?raw=true"
+    timeout: 10
+    #priority: "low"
+    #persistent: true
+    #sticky: true
+    tag: "test"
+    color: "#ffffff"
+
+    group: "test-notifications"
+
+    chronometer: true
+    when: "1609459200"
+
+    car_ui: true
+
+    actions:
+      - action: "ALARM" # The key you are sending for the event
+        title: "Sound Alarm" # The button title
+      - action: "URI" # Must be set to URI if you plan to use a URI
+        title: "Open Url"
+        uri: "https://google.com" # URL to open when action is selected, can also be a lovelace view/dashboard
+      - action: "REPLY"
+        title: "New fone, who dis?"
