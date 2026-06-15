@@ -1316,3 +1316,178 @@
           uri: /lovelace
   mode: single
   id: 096b6dee-139b-44ca-83d9-a698f7d3743b
+- alias: Garage Door - Late Night Check
+  description: Checks if garage is open at 10pm and midnight; auto-closes after 1
+    hour if no response
+  triggers:
+  - trigger: time
+    at: '22:00:00'
+    id: 10pm
+  - trigger: time
+    at: 00:00:00
+    id: midnight
+  conditions:
+  - condition: device
+    device_id: 6737c7de72a532fd44e29f33cdf93028
+    domain: cover
+    entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+    type: is_open
+  actions:
+  - variables:
+      night_ignore_action: '{{ ''IGNORE_GARAGE_2H'' if trigger.id == ''10pm'' else
+        ''IGNORE_GARAGE_ALL_NIGHT'' }}'
+      night_ignore_label: '{{ ''Ignore for 2h'' if trigger.id == ''10pm'' else ''Ignore
+        All Night'' }}'
+      night_message: '{{ "It''s 10pm — close it, or it''ll auto-close at 11pm." if
+        trigger.id == ''10pm'' else "It''s midnight — close it, or it''ll auto-close
+        at 1am." }}'
+  - action: notify.notify_joel
+    data:
+      title: Garage Still Open 🌙
+      message: '{{ night_message }}'
+      data:
+        notification_icon: mdi:garage-alert-variant
+        tag: garage-night-check
+        color: '#FF3300'
+        car_ui: true
+        sticky: true
+        actions:
+        - action: '{{ night_ignore_action }}'
+          title: '{{ night_ignore_label }}'
+          icon: mdi:bell-sleep
+        - action: CLOSE_GARAGE_NIGHT
+          title: Close Garage
+          icon: mdi:garage-lock
+  - wait_for_trigger:
+    - trigger: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: IGNORE_GARAGE_2H
+    - trigger: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: IGNORE_GARAGE_ALL_NIGHT
+    - trigger: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: CLOSE_GARAGE_NIGHT
+    - trigger: state
+      entity_id: cover.smart_garage_door_opener_door
+      to: closed
+    timeout: 01:00:00
+    continue_on_timeout: true
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger is none }}'
+      sequence:
+      - device_id: 6737c7de72a532fd44e29f33cdf93028
+        domain: cover
+        entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+        type: close
+      - action: notify.notify_joel
+        data:
+          title: Garage Auto-Closed 🔐
+          message: No response after 1 hour — closed automatically.
+          data:
+            notification_icon: mdi:garage-variant-lock
+            tag: garage-night-check
+            color: '#00AA00'
+            timeout: 120
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger is not none and wait.trigger.platform ==
+          ''event'' and wait.trigger.event.data.action in [''IGNORE_GARAGE_2H'', ''IGNORE_GARAGE_ALL_NIGHT'']
+          }}'
+      sequence:
+      - action: notify.notify_joel
+        data:
+          message: clear_notification
+          data:
+            tag: garage-night-check
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger is not none and wait.trigger.platform ==
+          ''event'' and wait.trigger.event.data.action == ''CLOSE_GARAGE_NIGHT'' }}'
+      sequence:
+      - device_id: 6737c7de72a532fd44e29f33cdf93028
+        domain: cover
+        entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+        type: close
+      - action: notify.notify_joel
+        data:
+          title: Garage Closed 🔐
+          message: Got it, closing the garage.
+          data:
+            notification_icon: mdi:garage-variant-lock
+            tag: garage-night-check
+            color: '#00AA00'
+            timeout: 120
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger is not none and wait.trigger.platform ==
+          ''state'' }}'
+      sequence:
+      - action: notify.notify_joel
+        data:
+          message: clear_notification
+          data:
+            tag: garage-night-check
+  mode: single
+  id: 71c78b9b-d819-4a8f-aa32-495c28ea984a
+- alias: 'Tesla: Not Plugged In Alert'
+  description: Sends a persistent notification if the car has been home for 30 minutes
+    without charging
+  triggers:
+  - trigger: state
+    entity_id: person.joel_couchman
+    to: home
+  conditions: []
+  actions:
+  - delay: 00:30:00
+  - condition: template
+    value_template: '{{ is_state(''person.joel_couchman'', ''home'') and states(''sensor.garage_joel_s_car_charging'')
+      == ''disconnected'' }}'
+  - action: notify.notify_joel
+    data:
+      title: Tesla Not Plugged In 🔋
+      message: 'Your Model Y has been home for 30+ minutes and isn’t charging. Battery:
+        {{ states(''sensor.garage_joel_s_car_battery_level'') }}%'
+      data:
+        notification_icon: mdi:ev-plug-type2
+        tag: tesla-not-charging
+        color: '#FF6600'
+        car_ui: true
+        sticky: true
+        persistent: true
+  - wait_for_trigger:
+    - trigger: state
+      entity_id: sensor.garage_joel_s_car_charging
+      from: disconnected
+    timeout: '24:00:00'
+    continue_on_timeout: false
+  - action: notify.notify_joel
+    data:
+      message: clear_notification
+      data:
+        tag: tesla-not-charging
+  mode: restart
+  id: 7e9931a2-8466-4f60-9723-6d39b761709d
+- alias: 'Tesla: Clear Not-Charging Alert'
+  description: Clears the not-plugged-in notification as soon as the car starts charging
+  triggers:
+  - trigger: state
+    entity_id: sensor.garage_joel_s_car_charging
+    to: Charging
+  - trigger: state
+    entity_id: sensor.garage_joel_s_car_charging
+    to: Complete
+  conditions: []
+  actions:
+  - action: notify.notify_joel
+    data:
+      message: clear_notification
+      data:
+        tag: tesla-not-charging
+  mode: single
+  id: 9659c52c-ddaf-4cf1-8640-00e57a282d2c
