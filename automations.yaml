@@ -1114,9 +1114,42 @@
   conditions: []
   actions:
   - action: notify.notify_joel
-    metadata: {}
     data:
-      message: Garage Open
+      title: Garage Door Open
+      message: The garage door has been open for 20 seconds.
+      data:
+        notification_icon: mdi:garage-open-variant
+        tag: garage-open-alert
+        color: '#FF6600'
+        car_ui: true
+        actions:
+        - action: CLOSE_GARAGE_NOW
+          title: Close Garage
+          icon: mdi:garage-lock
+  - wait_for_trigger:
+    - event_type: mobile_app_notification_action
+      event_data:
+        action: CLOSE_GARAGE_NOW
+      trigger: event
+    timeout: 00:30:00
+    continue_on_timeout: false
+  - if:
+    - condition: template
+      value_template: '{{ wait.trigger is not none }}'
+    then:
+    - device_id: 6737c7de72a532fd44e29f33cdf93028
+      domain: cover
+      entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+      type: close
+    - action: notify.notify_joel
+      data:
+        title: Closing Garage 🔐
+        message: Got it, closing the garage door.
+        data:
+          notification_icon: mdi:garage-variant-lock
+          tag: garage-open-alert
+          color: '#00FF00'
+          timeout: 60
   mode: single
 - id: '1731169214938'
   alias: WLED Timer
