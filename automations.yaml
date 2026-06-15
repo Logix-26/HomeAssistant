@@ -280,8 +280,7 @@
       entity_id: 349db00063226bd0c61be4333a837763
       type: arm_away
   mode: single
-- id: '1707024425328'
-  alias: Someone is home
+- alias: Someone is home
   description: ''
   triggers:
   - alias: When person 1 gets home
@@ -320,7 +319,7 @@
         entity_id: 9f7f21b10f4047b96aa1715b20777fde
         type: dock
         enabled: true
-      enabled: false
+      enabled: true
     - metadata: {}
       data:
         title: Docking Roborock ({{ states('sensor.roborock_s8_pro_ultra_cleaning_progress')
@@ -330,9 +329,11 @@
         data:
           image: '{{ state_attr(''image.roborock_s8_pro_ultra_map_0'', ''entity_picture'')
             }}'
+          timeout: 120
       action: notify.notify_all_people
       enabled: true
   mode: single
+  id: '1707024425328'
 - id: '1707109812957'
   alias: Set Joel Call Status
   description: ''
@@ -894,112 +895,24 @@
         transition: 3
         color_temp: 175
   mode: single
-- id: '1711715249526'
-  alias: Daily Triggers
+- alias: Daily Triggers
   description: ''
-  trigger:
+  triggers:
   - platform: time
     at: 05:00:00
     id: 5am
-  condition:
+  conditions:
   - condition: template
-    value_template: "{{ states.update | selectattr('state','eq','on') |\n    map(attribute='entity_id')\
-      \ | list | count > 0 }}"
-  action:
+    value_template: '{{ states.update | selectattr(''state'',''eq'',''on'') | map(attribute=''entity_id'')
+      | list | count > 0 }}'
+  actions:
   - service: update.install
-    metadata: {}
-    data:
-      backup: true
-    target:
-      device_id:
-      - ecac6b2979ac76307173797a7776f1ff
-      - fb24481138757f188377845e43db8f8a
-      - 16099460f026333b896765da6db85f23
-      - 8325332d3751ab88dad7e38ccc207a30
-      - 3ef8948824b6c0cbefe677f42aca770c
-      - 5a6c2483d3c4eb9e0548de450cbae843
-      - 6c0a870301f04ec47564075b58aa115a
-      - 31cca87213926c2e5aaa876e09e25da1
-      - 5feaf45b2f432d447fe226257a8cb0c5
-      - ac2f5a6401c59c80b9a10be18c487141
-      - 06aa9a1352a258ce436cd8a0cc44b795
-      - 9ae484c8237c9a3379170600caba940b
-      - e49001cab18539da856e6635cac31671
-      - 1a761a8d3cd81d8936a7b9dcd7e3ab04
-      - 25fc2130fd4e79f2e736a63b293bbcbf
-      - d5fdeb7ca226071aafaf6a1099a386ae
-      - 430a39a1a7f0508fe2b957518c3720bc
-      - 3e4bf99c9dcc390a8e2dcafc1b33f841
-      - cbc33acddbe1946f0aa2deac5b8391a1
-      - 256a6a00aa6c74e11be95c5266ab7518
-      - bbdaa1410bf97d586182d84fe607cb0b
-      - 98f680b9ea8f8d215c864db0a2acc101
-      - 9d274eacf880763ea5bb5bc42fd2e519
-      - e5f941a4dfb44932d431b372e4b78097
-      - bf40d0f53cad62e854bf646b580a0348
-      - 2e2e28511c33a1c2e968ac63c2912f76
-      - a89b9e3a2a7e253759340ba009a4e065
-      - 04b12276502e9c2c30c878e2b422a80b
-      - 66f0de0dedaebf365d2883e3169d1e63
-      - 203cee9cc6002b7a44f6db1639d5d947
-      - f1a2db703f06c451bb0053d13fc873d1
-      - 62785da95953afe23da3e2d016ec7393
-      - ccd496b890e37e4a15c407a460b319ee
-      - 790454e66ffc4a441f7d0e7323fe4307
-      - ba4dd1bc013b29f3cfb9dcdafddff5df
-      - cca338ea6c7e346e023387884c27515c
-      - 0953273c3f798f5730f64a9f7dcf4a34
-      - 969605f9b615cb23cb69129a6e161b43
-      - 5b9b9dc5e9d392d52a32efea41ec9d83
-      - 3a06f5a428cca76f07dedb33b9320873
-      - a6834cb0e8cad74ed41a7142b6380297
-      - 073dd386d848f6fc21f6927e2a350129
-      - 5a637532a8ab36c00855786977ddf134
-      - d648f136653659d6c13a4960f48ef852
-      - df6f244008d3491dd1d368b90559b4ba
-      - 8ba7cd15690fbb1adb5a8c82ebe9f830
-      - a37f91608ff32f56e372da994d1994da
-      - e16b2544efceec3fc58135ff12c89b32
-      - fb3e25997ef658cbf80c77f94991f317
-      - 87e5f1cdbfee57e7989329a3f5bb0a73
-      - cd54a47fee40baf0f3cc22e2e8630804
-      - 905f78ddd5c99df66adf215643738b0d
-      - 701ebb14655cd7db11d6900cb68c63d5
-      - b257e6935bc60f8207ddbc88e79c6ce0
-      - eb136ffb1318860a149db551f57e1819
-      - ad2670a2b261a5b96efe93f7a89a6728
-      - 783c3626f34a5094c5a2cc416a3d11d9
-      - 266341e44f961f1dec8967ac6c32a6d3
-      - 316efc6027791d22e6112471d8c2dfca
-      - a7b2aabd3c25a9054843fe39656a2257
-      - 5158fcd99b623abe747f35aa7da2c30c
-      - ee438924cab573c9c82f9d912fc51024
-      - 2c47a3549984f970a2e0aeba641ad4a4
-      - 4109bbaffff03526d835dfe32e0d80df
-      - cb2f6f5c2284f26ee5538f4e96f14499
-      - 65e8b7b00ac42f1df4e02805ed2212f9
-      - c218319a57ad38ce21bcb42b8ab262cb
-      - a8410512b7feff580efd18bfdfad06e8
-      - 768a840d00887e01af348070560920ba
-      - c20d79c129d09d27c543baecd5672b6f
-      - e18689ba6521038ed487ea13e7c4964d
-      - aaba7688c063ca31e02ec50f02a7d113
-      - bee822635e0d260b4469b777ffc5d50f
-      - 9dfd4f22302bf571215e0dad3e7e9d7c
-      - 1f5586ee18eda8f2646b1f96ceec33c6
-      - 55bf1ca6f09886a62bade29be9f97ef6
-      - 60dbc6cb399ee07d1305d7e6bf939059
-      - 7b6e49dbf94048e29bb2cc139f0f897e
-      - ff8b4dc1163781bdc9497b6629b008f2
-      - 0e9e7a11d72e7e9255556adbd70102e0
-    enabled: false
-  - service: update.install
-    metadata: {}
     data: {}
     target:
       entity_id: '{{ states.update | selectattr(''state'',''eq'',''on'') | map(attribute=''entity_id'')
         | list }}'
   mode: single
+  id: '1711715249526'
 - id: '1725193327953'
   alias: Bellman On/Off at Night
   description: ''
@@ -1106,16 +1019,12 @@
     entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
     type: opened
     trigger: device
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 20
   conditions: []
   actions:
   - action: notify.notify_joel
     data:
       title: Garage Door Open
-      message: The garage door has been open for 20 seconds.
+      message: The garage door is open.
       data:
         notification_icon: mdi:garage-open-variant
         tag: garage-open-alert
@@ -1171,7 +1080,7 @@
             notification_icon: mdi:garage-variant-lock
             tag: garage-open-alert
             color: '#00FF00'
-            timeout: 60
+            timeout: 120
     - conditions:
       - condition: template
         value_template: '{{ wait.trigger.event.data.action == ''CLOSE_GARAGE_ON_LEAVE''
@@ -1185,7 +1094,7 @@
             notification_icon: mdi:garage-open-variant
             tag: garage-open-alert
             color: '#0088FF'
-            timeout: 30
+            timeout: 120
       - wait_for_trigger:
         - trigger: state
           entity_id: zone.home
@@ -1206,7 +1115,7 @@
             notification_icon: mdi:garage-variant-lock
             tag: garage-open-alert
             color: '#00FF00'
-            timeout: 60
+            timeout: 120
   mode: single
   id: '1727867809486'
 - id: '1731169214938'
@@ -1330,7 +1239,7 @@
         notification_icon: mdi:garage-variant-lock
         tag: garage-left-open
         color: '#00FF00'
-        timeout: 60
+        timeout: 120
   mode: single
   id: 297ede3b-2181-4593-b59c-8e0bbb8626c8
 - alias: 'Tesla: Open Garage on Unlock'
@@ -1342,7 +1251,7 @@
     to: unlocked
   conditions:
   - condition: state
-    entity_id: person.joel
+    entity_id: person.joel_couchman
     state: home
   actions:
   - action: notify.notify_joel
@@ -1380,3 +1289,30 @@
         notification_icon: mdi:garage-open-variant
   mode: single
   id: ecfec394-9b69-4e38-b058-343f61c58732
+- alias: 'Tesla: Low Battery Alert'
+  description: Notify when car battery drops below 20% and is not charging
+  triggers:
+  - trigger: numeric_state
+    entity_id: sensor.garage_joel_s_car_battery_level
+    below: 20
+  conditions:
+  - condition: state
+    entity_id: sensor.garage_joel_s_car_charging
+    state: disconnected
+  actions:
+  - action: notify.notify_joel
+    data:
+      title: Tesla Battery Low 🔋
+      message: Joel's Model Y is at {{ states('sensor.garage_joel_s_car_battery_level')
+        }}% and not plugged in.
+      data:
+        notification_icon: mdi:car-electric
+        tag: tesla-low-battery
+        color: '#FF3300'
+        car_ui: true
+        actions:
+        - action: URI
+          title: View Car
+          uri: /lovelace
+  mode: single
+  id: 096b6dee-139b-44ca-83d9-a698f7d3743b
