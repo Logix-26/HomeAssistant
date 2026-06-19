@@ -1095,27 +1095,47 @@
             tag: garage-open-alert
             color: '#0088FF'
             timeout: 120
-      - wait_for_trigger:
-        - trigger: state
-          entity_id: zone.home
-          to: '0'
-        timeout: 04:00:00
-        continue_on_timeout: true
-      - condition: template
-        value_template: '{{ wait.trigger is not none }}'
-      - device_id: 6737c7de72a532fd44e29f33cdf93028
-        domain: cover
-        entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
-        type: close
-      - action: notify.notify_joel
-        data:
-          title: Garage Closed 🔐
-          message: Garage door closed as you left home.
+      - choose:
+        - conditions:
+          - condition: numeric_state
+            entity_id: zone.home
+            below: 1
+          sequence:
+          - device_id: 6737c7de72a532fd44e29f33cdf93028
+            domain: cover
+            entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+            type: close
+          - action: notify.notify_joel
+            data:
+              title: Garage Closed 🔐
+              message: Garage door closed as you left home.
+              data:
+                notification_icon: mdi:garage-variant-lock
+                tag: garage-open-alert
+                color: '#00FF00'
+                timeout: 120
+        default:
+        - wait_for_trigger:
+          - trigger: state
+            entity_id: zone.home
+            to: '0'
+          timeout: 04:00:00
+          continue_on_timeout: true
+        - condition: template
+          value_template: '{{ wait.trigger is not none }}'
+        - device_id: 6737c7de72a532fd44e29f33cdf93028
+          domain: cover
+          entity_id: 6b7c8fb6e3fb75d1b46a0630d40c2655
+          type: close
+        - action: notify.notify_joel
           data:
-            notification_icon: mdi:garage-variant-lock
-            tag: garage-open-alert
-            color: '#00FF00'
-            timeout: 120
+            title: Garage Closed 🔐
+            message: Garage door closed as you left home.
+            data:
+              notification_icon: mdi:garage-variant-lock
+              tag: garage-open-alert
+              color: '#00FF00'
+              timeout: 120
   mode: single
   id: '1727867809486'
 - id: '1731169214938'
