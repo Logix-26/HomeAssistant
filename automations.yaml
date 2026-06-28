@@ -288,11 +288,13 @@
     - zone.home
     from: '0'
     to: '1'
+    for: 00:00:30
     trigger: state
   - alias: When person 2 gets home
     entity_id:
     - zone.home
     to: '2'
+    for: 00:00:30
     enabled: true
     trigger: state
   conditions: []
